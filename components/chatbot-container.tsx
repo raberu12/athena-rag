@@ -18,7 +18,18 @@ export function ChatbotContainer() {
     setSelectedDocIds((prev) => [...prev, ...newDocuments.map((d) => d.id)])
   }, [])
 
-  const handleRemoveDocument = useCallback((docId: string) => {
+  const handleRemoveDocument = useCallback(async (docId: string) => {
+    // Remove from vector store via API
+    try {
+      await fetch("/api/documents", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: docId }),
+      })
+    } catch (error) {
+      console.error("Failed to remove document from backend:", error)
+    }
+
     setDocuments((prev) => prev.filter((d) => d.id !== docId))
     setSelectedDocIds((prev) => prev.filter((id) => id !== docId))
   }, [])

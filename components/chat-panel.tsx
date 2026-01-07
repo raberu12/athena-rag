@@ -66,37 +66,6 @@ export function ChatPanel({
     onGreetingComplete()
   }, [onGreetingComplete])
 
-  const getRelevantContext = (query: string): string => {
-    const selectedDocs = documents.filter((d) => selectedDocIds.includes(d.id))
-
-    if (selectedDocs.length === 0) {
-      return ""
-    }
-
-    // Simple keyword matching for RAG simulation
-    const keywords = query.toLowerCase().split(/\s+/)
-    let context = ""
-
-    for (const doc of selectedDocs) {
-      const content = doc.content.toLowerCase()
-      let docRelevance = 0
-
-      for (const keyword of keywords) {
-        if (keyword.length > 2) {
-          const matches = (content.match(new RegExp(keyword, "g")) || []).length
-          docRelevance += matches
-        }
-      }
-
-      if (docRelevance > 0) {
-        const contentPreview = doc.content.substring(0, 500)
-        context += `\n[From ${doc.name}]:\n${contentPreview}...\n`
-      }
-    }
-
-    return context
-  }
-
   const handleSendMessage = async () => {
     if (!input.trim()) return
 
@@ -112,16 +81,13 @@ export function ChatPanel({
     setIsLoading(true)
 
     try {
-      const context = getRelevantContext(input)
-      const hasDocuments = selectedDocIds.length > 0
-
+      // Send query with selected document IDs for server-side retrieval
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: input,
-          context: context || null,
-          hasDocuments,
+          documentIds: selectedDocIds.length > 0 ? selectedDocIds : undefined,
         }),
       })
 
@@ -130,7 +96,7 @@ export function ChatPanel({
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.response,
+        content: data.response || data.error || "No response received",
         timestamp: new Date(),
       }
 

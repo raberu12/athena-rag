@@ -77,18 +77,74 @@ export function DocumentDrawer({
       const newDocuments: Document[] = []
 
       for (const file of files) {
-        const text = await file.text()
-        const doc: Document = {
-          id: `${Date.now()}-${Math.random()}`,
-          name: file.name,
-          content: text,
-          uploadedAt: new Date(),
-          size: file.size,
+        const documentId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+        const isPDF = file.type === "application/pdf" || file.name.endsWith(".pdf")
+
+        if (isPDF) {
+          // Upload PDF to backend for processing
+          const formData = new FormData()
+          formData.append("file", file)
+          formData.append("documentId", documentId)
+
+          const response = await fetch("/api/documents", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error(`Failed to process PDF: ${errorData.error}`)
+            continue
+          }
+
+          const result = await response.json()
+          console.log(`Document processed: ${result.document?.chunkCount} chunks`)
+
+          const doc: Document = {
+            id: documentId,
+            name: file.name,
+            content: `[PDF processed - ${result.document?.chunkCount || 0} chunks]`,
+            uploadedAt: new Date(),
+            size: file.size,
+            processed: true,
+          }
+          newDocuments.push(doc)
+        } else {
+          // Handle text files client-side (also send to backend for consistency)
+          const text = await file.text()
+
+          const formData = new FormData()
+          formData.append("file", file)
+          formData.append("documentId", documentId)
+
+          const response = await fetch("/api/documents", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error(`Failed to process file: ${errorData.error}`)
+            continue
+          }
+
+          const result = await response.json()
+
+          const doc: Document = {
+            id: documentId,
+            name: file.name,
+            content: text.substring(0, 500) + (text.length > 500 ? "..." : ""),
+            uploadedAt: new Date(),
+            size: file.size,
+            processed: true,
+          }
+          newDocuments.push(doc)
         }
-        newDocuments.push(doc)
       }
 
       onUpload(newDocuments)
+    } catch (error) {
+      console.error("Error processing files:", error)
     } finally {
       setIsLoading(false)
       if (fileInputRef.current) {
@@ -111,9 +167,8 @@ export function DocumentDrawer({
       {/* Drawer */}
       <div
         ref={drawerRef}
-        className={`fixed left-0 top-0 z-50 h-full w-80 transform bg-background transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed left-0 top-0 z-50 h-full w-80 transform bg-background transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex h-full flex-col gap-4 p-4">
           {/* Header */}
@@ -132,9 +187,8 @@ export function DocumentDrawer({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 transition-colors ${
-              isDragging ? "border-primary bg-primary/5" : "border-border bg-muted/30"
-            }`}
+            className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-border bg-muted/30"
+              }`}
           >
             <Upload className="h-6 w-6 text-muted-foreground" />
             <div className="text-center">
@@ -175,9 +229,8 @@ export function DocumentDrawer({
                 {documents.map((doc) => (
                   <Card
                     key={doc.id}
-                    className={`cursor-pointer transition-all border ${
-                      selectedDocIds.includes(doc.id) ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/50"
-                    }`}
+                    className={`cursor-pointer transition-all border ${selectedDocIds.includes(doc.id) ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/50"
+                      }`}
                     onClick={() => onToggle(doc.id)}
                   >
                     <div className="flex items-start gap-3 p-3">
