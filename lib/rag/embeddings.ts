@@ -15,17 +15,10 @@ interface OpenRouterEmbeddingResponse {
     };
 }
 
-interface OpenRouterErrorResponse {
-    error: {
-        message: string;
-        code: number;
-    };
-}
+// Use embedding model via OpenRouter
+const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 
-// Use a embedding model via OpenRouter
-const EMBEDDING_MODEL = "openai/text-embedding-3-large";
-
-// Maximum texts per batch (OpenRouter/OpenAI typically allow up to 2048)
+// Maximum texts per batch
 const BATCH_SIZE = 100;
 
 /**
@@ -125,7 +118,7 @@ async function generateEmbeddingsBatch(texts: string[], apiKey: string): Promise
 }
 
 /**
- * Generate embedding for a query (same as regular embedding for OpenRouter)
+ * Generate embedding for a query (same as regular embedding)
  */
 export async function generateQueryEmbedding(query: string): Promise<number[]> {
     return generateEmbedding(query);
