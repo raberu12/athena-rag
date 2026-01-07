@@ -8,7 +8,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Athena - RAG Chatbot",
+  title: "Athena",
   description: "Chat with your documents using AI",
   generator: "v0.app",
   icons: {
