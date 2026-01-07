@@ -1,32 +1,57 @@
-import { generateText } from "ai"
-import type { ChatRequest, ChatResponse } from "@/types/rag"
+/**
+ * Chat API - RAG-powered responses using OpenRouter
+ */
 
-export async function POST(request: Request) {
-  const { query, context, hasDocuments } = (await request.json()) as ChatRequest
+import { NextRequest, NextResponse } from "next/server";
+import {
+  retrieveContext,
+  buildRAGPrompt,
+  chatWithSystem,
+  vectorStore,
+} from "@/lib/rag";
+import type { ChatRequest, ChatResponse } from "@/types/rag";
 
+export async function POST(request: NextRequest): Promise<NextResponse<ChatResponse | { error: string }>> {
   try {
-    const systemPrompt = hasDocuments
-      ? `You are a helpful assistant that answers questions based on provided documents. 
-      Answer the user's question using only the information from the provided context. 
-      If the context doesn't contain relevant information, say so clearly.
-      Be concise and accurate in your responses.`
-      : `You are a helpful assistant. Answer the user's question helpfully and accurately.`
+    const body = await request.json() as ChatRequest;
+    const { query, documentIds } = body;
 
-    const userPrompt = context ? `Context from documents:\n${context}\n\nQuestion: ${query}` : `Question: ${query}`
-
-    const { text } = await generateText({
-      model: "openai/gpt-4o-mini",
-      system: systemPrompt,
-      prompt: userPrompt,
-    })
-
-    const response: ChatResponse = {
-      response: text,
+    if (!query || query.trim().length === 0) {
+      return NextResponse.json(
+        { error: "No query provided" },
+        { status: 400 }
+      );
     }
 
-    return Response.json(response)
+    console.log(`[Chat API] Query: "${query.substring(0, 50)}..."`);
+
+    // Check if there are any documents
+    const hasDocuments = vectorStore.getChunkCount() > 0;
+    console.log(`[Chat API] Has documents: ${hasDocuments}, chunk count: ${vectorStore.getChunkCount()}`);
+
+    // Retrieve relevant context
+    let retrievalResult;
+    if (hasDocuments) {
+      retrievalResult = await retrieveContext(query, documentIds);
+      console.log(`[Chat API] Retrieved ${retrievalResult.chunks.length} chunks`);
+    } else {
+      retrievalResult = { chunks: [], isEmpty: true };
+    }
+
+    // Build RAG prompt
+    const { system, user } = buildRAGPrompt(query, retrievalResult, hasDocuments);
+
+    // Generate response using OpenRouter
+    const response = await chatWithSystem(system, user);
+    console.log(`[Chat API] Generated response (${response.length} chars)`);
+
+    return NextResponse.json({ response });
   } catch (error) {
-    console.error("Chat error:", error)
-    return Response.json({ error: "Failed to process request" }, { status: 500 })
+    console.error("[Chat API] Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json(
+      { error: `Failed to process request: ${message}` },
+      { status: 500 }
+    );
   }
 }
