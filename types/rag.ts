@@ -4,6 +4,7 @@ export interface Document {
   content: string
   uploadedAt: Date
   size: number
+  processed?: boolean
 }
 
 export interface Message {
@@ -15,10 +16,20 @@ export interface Message {
 
 export interface ChatRequest {
   query: string
-  context: string | null
-  hasDocuments: boolean
+  documentIds?: string[]
 }
 
 export interface ChatResponse {
   response: string
+}
+
+export interface DocumentUploadResponse {
+  success: boolean
+  document?: {
+    id: string
+    name: string
+    chunkCount: number
+    processedAt: Date
+  }
+  error?: string
 }
