@@ -12,6 +12,23 @@ export type Json =
     | Json[];
 
 export interface Database {
+    graphql_public: {
+        Tables: Record<string, never>;
+        Views: Record<string, never>;
+        Functions: {
+            graphql: {
+                Args: {
+                    operationName?: string;
+                    query?: string;
+                    variables?: Json;
+                    extensions?: Json;
+                };
+                Returns: Json;
+            };
+        };
+        Enums: Record<string, never>;
+        CompositeTypes: Record<string, never>;
+    };
     public: {
         Tables: {
             profiles: {
@@ -33,6 +50,7 @@ export interface Database {
                     display_name?: string | null;
                     created_at?: string;
                 };
+                Relationships: [];
             };
             conversations: {
                 Row: {
@@ -56,6 +74,15 @@ export interface Database {
                     created_at?: string;
                     updated_at?: string;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "conversations_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             messages: {
                 Row: {
@@ -79,6 +106,15 @@ export interface Database {
                     content?: string;
                     created_at?: string;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "messages_conversation_id_fkey";
+                        columns: ["conversation_id"];
+                        isOneToOne: false;
+                        referencedRelation: "conversations";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             documents: {
                 Row: {
@@ -108,6 +144,15 @@ export interface Database {
                     storage_path?: string | null;
                     created_at?: string;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "documents_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             document_chunks: {
                 Row: {
@@ -137,9 +182,18 @@ export interface Database {
                     end_char?: number;
                     embedding?: number[] | null;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "document_chunks_document_id_fkey";
+                        columns: ["document_id"];
+                        isOneToOne: false;
+                        referencedRelation: "documents";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
         };
-        Views: {};
+        Views: Record<string, never>;
         Functions: {
             match_documents: {
                 Args: {
@@ -159,7 +213,8 @@ export interface Database {
                 }[];
             };
         };
-        Enums: {};
+        Enums: Record<string, never>;
+        CompositeTypes: Record<string, never>;
     };
 }
 
