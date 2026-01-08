@@ -75,8 +75,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     } else {
       // Try database if in-memory is empty
       try {
+        console.log(`[Chat API] Querying database with documentIds:`, documentIds, `userId:`, user.id);
         const queryEmbedding = await generateEmbedding(query);
-        const dbChunks = await searchSimilar(queryEmbedding, 5, 0.7, documentIds);
+        console.log(`[Chat API] Generated query embedding, searching...`);
+        const dbChunks = await searchSimilar(queryEmbedding, 5, 0.1, documentIds, user.id);
+        console.log(`[Chat API] Database returned ${dbChunks.length} chunks`);
 
         if (dbChunks.length > 0) {
           hasDocuments = true;
@@ -99,6 +102,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
           };
           console.log(`[Chat API] Retrieved ${dbChunks.length} chunks from database`);
         } else {
+          console.log(`[Chat API] No chunks found in database for these documents`);
           retrievalResult = { chunks: [], isEmpty: true };
         }
       } catch (dbError) {
