@@ -77,31 +77,37 @@ export function DocumentDrawer({
       const newDocuments: Document[] = []
 
       for (const file of files) {
-        const documentId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
         const isPDF = file.type === "application/pdf" || file.name.endsWith(".pdf")
 
+        // Upload file to backend for processing (server generates the document ID)
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const response = await fetch("/api/documents", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error(`Failed to process file: ${errorData.error}`)
+          continue
+        }
+
+        const result = await response.json()
+        console.log(`Document processed: ${result.document?.chunkCount} chunks`)
+
+        // Use the server-generated document ID
+        const serverDocId = result.document?.id
+
+        if (!serverDocId) {
+          console.error("No document ID returned from server")
+          continue
+        }
+
         if (isPDF) {
-          // Upload PDF to backend for processing
-          const formData = new FormData()
-          formData.append("file", file)
-          formData.append("documentId", documentId)
-
-          const response = await fetch("/api/documents", {
-            method: "POST",
-            body: formData,
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            console.error(`Failed to process PDF: ${errorData.error}`)
-            continue
-          }
-
-          const result = await response.json()
-          console.log(`Document processed: ${result.document?.chunkCount} chunks`)
-
           const doc: Document = {
-            id: documentId,
+            id: serverDocId,
             name: file.name,
             content: `[PDF processed - ${result.document?.chunkCount || 0} chunks]`,
             uploadedAt: new Date(),
@@ -110,28 +116,9 @@ export function DocumentDrawer({
           }
           newDocuments.push(doc)
         } else {
-          // Handle text files client-side (also send to backend for consistency)
           const text = await file.text()
-
-          const formData = new FormData()
-          formData.append("file", file)
-          formData.append("documentId", documentId)
-
-          const response = await fetch("/api/documents", {
-            method: "POST",
-            body: formData,
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            console.error(`Failed to process file: ${errorData.error}`)
-            continue
-          }
-
-          const result = await response.json()
-
           const doc: Document = {
-            id: documentId,
+            id: serverDocId,
             name: file.name,
             content: text.substring(0, 500) + (text.length > 500 ? "..." : ""),
             uploadedAt: new Date(),
