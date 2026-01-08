@@ -3,7 +3,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import type { Tables, InsertTables } from "@/types/supabase";
+import type { Tables, InsertTables, UpdateTables } from "@/types/supabase";
 
 export type Message = Tables<"messages">;
 
@@ -37,13 +37,15 @@ export async function addMessage(
 ): Promise<Message> {
     const supabase = await createClient();
 
+    const insertData: InsertTables<"messages"> = {
+        conversation_id: conversationId,
+        role,
+        content,
+    };
+
     const { data, error } = await supabase
         .from("messages")
-        .insert({
-            conversation_id: conversationId,
-            role,
-            content,
-        } as InsertTables<"messages">)
+        .insert(insertData)
         .select()
         .single();
 
@@ -53,9 +55,10 @@ export async function addMessage(
     }
 
     // Update conversation's updated_at timestamp
+    const updateData: UpdateTables<"conversations"> = { updated_at: new Date().toISOString() };
     await supabase
         .from("conversations")
-        .update({ updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq("id", conversationId);
 
     return data;

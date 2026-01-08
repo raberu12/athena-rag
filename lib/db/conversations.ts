@@ -59,9 +59,11 @@ export async function createConversation(
 ): Promise<Conversation> {
     const supabase = await createClient();
 
+    const insertData: InsertTables<"conversations"> = { user_id: userId, title };
+
     const { data, error } = await supabase
         .from("conversations")
-        .insert({ user_id: userId, title } as InsertTables<"conversations">)
+        .insert(insertData)
         .select()
         .single();
 
@@ -82,9 +84,11 @@ export async function updateConversation(
 ): Promise<Conversation> {
     const supabase = await createClient();
 
+    const updateData: UpdateTables<"conversations"> = { ...updates, updated_at: new Date().toISOString() };
+
     const { data, error } = await supabase
         .from("conversations")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq("id", conversationId)
         .select()
         .single();

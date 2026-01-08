@@ -64,12 +64,17 @@ export async function createDocument(
 ): Promise<Document> {
     const supabase = await createClient();
 
+    const insertData: InsertTables<"documents"> = {
+        user_id: userId,
+        name: metadata.name,
+        size_bytes: metadata.size_bytes,
+        page_count: metadata.page_count,
+        storage_path: metadata.storage_path,
+    };
+
     const { data, error } = await supabase
         .from("documents")
-        .insert({
-            user_id: userId,
-            ...metadata,
-        } as InsertTables<"documents">)
+        .insert(insertData)
         .select()
         .single();
 
