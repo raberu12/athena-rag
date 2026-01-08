@@ -23,11 +23,8 @@ export { chunkText } from "./chunker";
 // Embeddings
 export { generateEmbedding, generateEmbeddings, generateQueryEmbedding } from "./embeddings";
 
-// Vector Store
-export { vectorStore } from "./vector-store";
-
-// Retrieval
-export { retrieveContext, formatContextForPrompt } from "./retriever";
+// Retrieval (Note: use lib/db/vector-store for database-backed retrieval)
+export { formatContextForPrompt } from "./retriever";
 
 // Prompt Construction
 export { buildRAGPrompt } from "./prompts";

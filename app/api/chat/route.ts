@@ -1,20 +1,16 @@
 /**
  * Chat API - RAG-powered responses using OpenRouter
- * Updated to use Supabase auth and persist messages
+ * Uses Supabase auth and pgvector for document retrieval
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  retrieveContext,
-  buildRAGPrompt,
-  chatWithSystem,
-  vectorStore,
-} from "@/lib/rag";
-import { addMessage, getMessages } from "@/lib/db/messages";
+import { buildRAGPrompt, chatWithSystem } from "@/lib/rag";
+import { addMessage } from "@/lib/db/messages";
 import { getConversation, updateConversation } from "@/lib/db/conversations";
-import { searchSimilar } from "@/lib/db/vector-store";
+import { searchSimilar, getChunkCount } from "@/lib/db/vector-store";
 import { generateEmbedding } from "@/lib/rag/embeddings";
+import { RAG_CONFIG } from "@/lib/rag/config";
 import type { ChatRequest, ChatResponse } from "@/types/rag";
 
 interface ExtendedChatRequest extends ChatRequest {
@@ -59,30 +55,32 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       }
     }
 
-    // Check for documents - try both in-memory and database
-    const inMemoryChunkCount = vectorStore.getChunkCount();
-    let hasDocuments = inMemoryChunkCount > 0;
+    // Check if user has any documents in the database
+    const totalChunks = await getChunkCount(user.id);
+    const hasDocuments = totalChunks > 0;
 
-    console.log(`[Chat API] In-memory chunks: ${inMemoryChunkCount}`);
+    console.log(`[Chat API] User has ${totalChunks} chunks in database`);
 
-    // Build context for RAG
+    // Build context for RAG using database search
     let retrievalResult;
 
     if (hasDocuments) {
-      // Use in-memory store for this session (already loaded)
-      retrievalResult = await retrieveContext(query, documentIds);
-      console.log(`[Chat API] Retrieved ${retrievalResult.chunks.length} chunks from memory`);
-    } else {
-      // Try database if in-memory is empty
       try {
-        console.log(`[Chat API] Querying database with documentIds:`, documentIds, `userId:`, user.id);
+        console.log(`[Chat API] Querying database with documentIds:`, documentIds);
         const queryEmbedding = await generateEmbedding(query);
         console.log(`[Chat API] Generated query embedding, searching...`);
-        const dbChunks = await searchSimilar(queryEmbedding, 5, 0.1, documentIds, user.id);
+
+        const dbChunks = await searchSimilar(
+          queryEmbedding,
+          RAG_CONFIG.topK,
+          RAG_CONFIG.scoreThreshold,
+          documentIds,
+          user.id
+        );
+
         console.log(`[Chat API] Database returned ${dbChunks.length} chunks`);
 
         if (dbChunks.length > 0) {
-          hasDocuments = true;
           retrievalResult = {
             chunks: dbChunks.map((chunk) => ({
               chunk: {
@@ -100,18 +98,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
             })),
             isEmpty: false,
           };
-          console.log(`[Chat API] Retrieved ${dbChunks.length} chunks from database`);
         } else {
-          console.log(`[Chat API] No chunks found in database for these documents`);
+          console.log(`[Chat API] No matching chunks found in database`);
           retrievalResult = { chunks: [], isEmpty: true };
         }
       } catch (dbError) {
         console.error("[Chat API] Database retrieval error:", dbError);
         retrievalResult = { chunks: [], isEmpty: true };
       }
-    }
-
-    if (!retrievalResult) {
+    } else {
       retrievalResult = { chunks: [], isEmpty: true };
     }
 
