@@ -55,10 +55,13 @@ export async function GET(): Promise<NextResponse<ListResponse | { error: string
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
+            console.log("[Documents API] Auth error:", authError);
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        console.log("[Documents API] User ID:", user.id);
         const documents = await getDocuments(user.id);
+        console.log("[Documents API] Found documents:", documents.length);
         return NextResponse.json({ documents });
     } catch (error) {
         console.error("[Documents API] Error:", error);

@@ -40,10 +40,13 @@ export function AuthenticatedApp({ userEmail }: AuthenticatedAppProps) {
     // Fetch documents on mount
     useEffect(() => {
         const fetchDocuments = async () => {
+            console.log("[AuthenticatedApp] Fetching documents...");
             try {
                 const response = await fetch("/api/documents");
+                console.log("[AuthenticatedApp] Documents response:", response.status);
                 if (response.ok) {
                     const data = await response.json();
+                    console.log("[AuthenticatedApp] Documents data:", data);
                     const docs: Document[] = (data.documents || []).map((doc: { id: string; name: string; size_bytes: number; created_at: string }) => ({
                         id: doc.id,
                         name: doc.name,
