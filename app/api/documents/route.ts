@@ -1,21 +1,19 @@
 /**
  * Document Upload and Processing API
- * Updated to use Supabase auth and persistent storage
+ * Uses Supabase auth and pgvector for persistent storage
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
     parsePDF,
-    parseText,
     chunkText,
     generateEmbeddings,
-    vectorStore,
     type ProcessedDocument,
-    type DocumentChunk,
 } from "@/lib/rag";
 import {
     getDocuments,
+    getDocument,
     createDocument,
     deleteDocument as deleteDocumentFromDB,
 } from "@/lib/db/documents";
@@ -89,7 +87,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
 
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
-        // Always generate document ID server-side (ignore any client-provided ID)
 
         if (!file) {
             return NextResponse.json(
@@ -138,7 +135,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
             );
         }
 
-        // Always create document record in database (generates UUID)
+        // Create document record in database (generates UUID)
         const doc = await createDocument(user.id, {
             name: fileName,
             size_bytes: fileSize,
@@ -171,24 +168,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
             embedding: embeddings[i],
         }));
 
-        // Remove existing chunks if re-uploading
+        // Remove existing chunks if re-uploading (shouldn't happen with new UUID, but safe)
         if (await hasDocumentChunks(documentId)) {
             await removeDocumentChunks(documentId);
         }
 
-        // Store chunks in pgvector
+        // Store chunks in pgvector database
         await addChunks(documentId, chunksWithEmbeddings);
         console.log(`[Documents API] Stored ${chunksWithEmbeddings.length} chunks in database`);
-
-        // Also add to in-memory store for current session compatibility
-        const inMemoryChunks: DocumentChunk[] = chunks.map((chunk, i) => ({
-            ...chunk,
-            embedding: embeddings[i],
-        }));
-        if (vectorStore.hasDocument(documentId)) {
-            vectorStore.removeDocument(documentId);
-        }
-        vectorStore.addChunks(inMemoryChunks);
 
         const processedDocument: ProcessedDocument = {
             id: documentId,
@@ -212,7 +199,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
 }
 
 /**
- * DELETE /api/documents - Remove a document from database and vector store
+ * DELETE /api/documents - Remove a document from database
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteResponse>> {
     try {
@@ -235,11 +222,17 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteR
             );
         }
 
-        // Delete from database (cascades to chunks)
-        await deleteDocumentFromDB(documentId);
+        // Verify document ownership before deletion
+        const document = await getDocument(documentId);
+        if (!document || document.user_id !== user.id) {
+            return NextResponse.json(
+                { success: false, error: "Document not found" },
+                { status: 404 }
+            );
+        }
 
-        // Also remove from in-memory store
-        vectorStore.removeDocument(documentId);
+        // Delete from database (cascades to chunks via foreign key)
+        await deleteDocumentFromDB(documentId);
 
         console.log(`[Documents API] Removed document: ${documentId}`);
 

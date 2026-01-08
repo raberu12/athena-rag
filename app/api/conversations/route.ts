@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getConversations, createConversation, deleteConversation } from "@/lib/db/conversations";
+import { getConversations, getConversation, createConversation, deleteConversation } from "@/lib/db/conversations";
 
 export async function GET() {
     try {
@@ -65,6 +65,12 @@ export async function DELETE(request: NextRequest) {
 
         if (!conversationId) {
             return NextResponse.json({ error: "Conversation ID required" }, { status: 400 });
+        }
+
+        // Verify conversation ownership before deletion
+        const conversation = await getConversation(conversationId);
+        if (!conversation || conversation.user_id !== user.id) {
+            return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
         }
 
         await deleteConversation(conversationId);
