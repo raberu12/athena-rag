@@ -171,7 +171,7 @@ export interface Database {
                     chunk_index: number;
                     start_char: number;
                     end_char: number;
-                    embedding?: number[] | null;
+                    embedding?: string | number[] | null; // pgvector accepts string format
                 };
                 Update: {
                     id?: string;
@@ -200,7 +200,8 @@ export interface Database {
                     query_embedding: number[];
                     match_threshold: number;
                     match_count: number;
-                    filter_document_ids?: string[];
+                    filter_document_ids?: string[] | null;
+                    p_user_id?: string | null;
                 };
                 Returns: {
                     id: string;
@@ -210,6 +211,7 @@ export interface Database {
                     start_char: number;
                     end_char: number;
                     similarity: number;
+                    document_name: string;
                 }[];
             };
         };

@@ -5,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { RAG_CONFIG } from "@/lib/rag/config";
+import type { Database } from "@/types/supabase";
 
 export interface ChunkWithEmbedding {
     content: string;
@@ -25,13 +26,20 @@ export interface ScoredChunk {
     document_name?: string;
 }
 
-interface ChunkRecord {
+interface ChunkInsertRecord {
     document_id: string;
     content: string;
     chunk_index: number;
     start_char: number;
     end_char: number;
-    embedding: number[];
+    embedding: string; // pgvector expects string format for insert
+}
+
+/**
+ * Format embedding array as pgvector string
+ */
+function formatEmbedding(embedding: number[]): string {
+    return `[${embedding.join(",")}]`;
 }
 
 /**
@@ -43,13 +51,13 @@ export async function addChunks(
 ): Promise<void> {
     const supabase = await createClient();
 
-    const records: ChunkRecord[] = chunks.map((chunk) => ({
+    const records: ChunkInsertRecord[] = chunks.map((chunk) => ({
         document_id: documentId,
         content: chunk.content,
         chunk_index: chunk.chunk_index,
         start_char: chunk.start_char,
         end_char: chunk.end_char,
-        embedding: chunk.embedding,
+        embedding: formatEmbedding(chunk.embedding),
     }));
 
     // Insert in batches to avoid payload size limits
@@ -60,8 +68,10 @@ export async function addChunks(
         const batch = records.slice(i, i + batchSize);
         console.log(`[VectorStore] Inserting batch ${Math.floor(i / batchSize) + 1}, size: ${batch.length}`);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase.from("document_chunks") as any).insert(batch).select();
+        const { data, error } = await supabase
+            .from("document_chunks")
+            .insert(batch as Database["public"]["Tables"]["document_chunks"]["Insert"][])
+            .select();
 
         if (error) {
             console.error("[VectorStore] Error adding chunks:", error);
@@ -80,8 +90,8 @@ export async function addChunks(
 export async function removeDocumentChunks(documentId: string): Promise<void> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("document_chunks") as any)
+    const { error } = await supabase
+        .from("document_chunks")
         .delete()
         .eq("document_id", documentId);
 
@@ -106,13 +116,12 @@ export async function searchSimilar(
     console.log(`[VectorStore] Searching with topK=${topK}, threshold=${threshold}, userId=${userId}, docIds:`, documentIds);
 
     // Use the match_documents RPC function for vector similarity search
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc("match_documents", {
+    const { data, error } = await supabase.rpc("match_documents", {
         query_embedding: queryEmbedding,
         match_threshold: threshold,
         match_count: topK,
-        filter_document_ids: documentIds || null,
-        p_user_id: userId || null,
+        filter_document_ids: documentIds ?? null,
+        p_user_id: userId ?? null,
     });
 
     if (error) {
@@ -131,8 +140,8 @@ export async function getChunkCount(userId: string): Promise<number> {
     const supabase = await createClient();
 
     // First get the user's document IDs
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: docs, error: docsError } = await (supabase.from("documents") as any)
+    const { data: docs, error: docsError } = await supabase
+        .from("documents")
         .select("id")
         .eq("user_id", userId);
 
@@ -140,11 +149,11 @@ export async function getChunkCount(userId: string): Promise<number> {
         return 0;
     }
 
-    const docIds = docs.map((d: { id: string }) => d.id);
+    const docIds = docs.map((d) => d.id);
 
     // Then count chunks for those documents
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count, error } = await (supabase.from("document_chunks") as any)
+    const { count, error } = await supabase
+        .from("document_chunks")
         .select("id", { count: "exact", head: true })
         .in("document_id", docIds);
 
@@ -162,8 +171,8 @@ export async function getChunkCount(userId: string): Promise<number> {
 export async function hasDocumentChunks(documentId: string): Promise<boolean> {
     const supabase = await createClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count, error } = await (supabase.from("document_chunks") as any)
+    const { count, error } = await supabase
+        .from("document_chunks")
         .select("id", { count: "exact", head: true })
         .eq("document_id", documentId);
 
