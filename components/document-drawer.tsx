@@ -1,11 +1,10 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef, useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { X, Upload, FileText, Loader } from "lucide-react"
+import { useDocumentUpload } from "@/hooks/use-document-upload"
 import type { Document } from "@/types/rag"
 
 interface DocumentDrawerProps {
@@ -27,10 +26,18 @@ export function DocumentDrawer({
   onRemove,
   onToggle,
 }: DocumentDrawerProps) {
-  const [isDragging, setIsDragging] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
+
+  const {
+    isLoading,
+    isDragging,
+    fileInputRef,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleFileSelect,
+    openFileDialog,
+  } = useDocumentUpload({ onUpload })
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -49,96 +56,6 @@ export function DocumentDrawer({
       document.body.style.overflow = ""
     }
   }, [isOpen, onClose])
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const files = Array.from(e.dataTransfer.files)
-    processFiles(files)
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.currentTarget.files || [])
-    processFiles(files)
-  }
-
-  const processFiles = async (files: File[]) => {
-    setIsLoading(true)
-    try {
-      const newDocuments: Document[] = []
-
-      for (const file of files) {
-        const isPDF = file.type === "application/pdf" || file.name.endsWith(".pdf")
-
-        // Upload file to backend for processing (server generates the document ID)
-        const formData = new FormData()
-        formData.append("file", file)
-
-        const response = await fetch("/api/documents", {
-          method: "POST",
-          body: formData,
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          console.error(`Failed to process file: ${errorData.error}`)
-          continue
-        }
-
-        const result = await response.json()
-        console.log(`Document processed: ${result.document?.chunkCount} chunks`)
-
-        // Use the server-generated document ID
-        const serverDocId = result.document?.id
-
-        if (!serverDocId) {
-          console.error("No document ID returned from server")
-          continue
-        }
-
-        if (isPDF) {
-          const doc: Document = {
-            id: serverDocId,
-            name: file.name,
-            content: `[PDF processed - ${result.document?.chunkCount || 0} chunks]`,
-            uploadedAt: new Date(),
-            size: file.size,
-            processed: true,
-          }
-          newDocuments.push(doc)
-        } else {
-          const text = await file.text()
-          const doc: Document = {
-            id: serverDocId,
-            name: file.name,
-            content: text.substring(0, 500) + (text.length > 500 ? "..." : ""),
-            uploadedAt: new Date(),
-            size: file.size,
-            processed: true,
-          }
-          newDocuments.push(doc)
-        }
-      }
-
-      onUpload(newDocuments)
-    } catch (error) {
-      console.error("Error processing files:", error)
-    } finally {
-      setIsLoading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-      }
-    }
-  }
 
   return (
     <>
@@ -182,7 +99,7 @@ export function DocumentDrawer({
               <p className="text-xs font-medium text-foreground">Drag files here</p>
               <p className="text-xs text-muted-foreground">or click to browse</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+            <Button variant="outline" size="sm" onClick={openFileDialog} disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader className="h-3 w-3 animate-spin" />
