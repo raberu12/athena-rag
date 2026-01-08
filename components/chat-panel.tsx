@@ -5,7 +5,7 @@ import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Menu, Send, Loader, MessageSquarePlus, FileText } from "lucide-react";
+import { Send, Loader, MessageSquarePlus, FileText } from "lucide-react";
 import { ChatMessage } from "./chat-message";
 import { TypingMessage } from "./typing-message";
 import { UserMenu } from "./user-menu";
