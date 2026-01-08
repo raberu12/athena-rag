@@ -1,8 +1,10 @@
 /**
  * Document Upload and Processing API
+ * Updated to use Supabase auth and persistent storage
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import {
     parsePDF,
     parseText,
@@ -12,6 +14,16 @@ import {
     type ProcessedDocument,
     type DocumentChunk,
 } from "@/lib/rag";
+import {
+    getDocuments,
+    createDocument,
+    deleteDocument as deleteDocumentFromDB,
+} from "@/lib/db/documents";
+import {
+    addChunks,
+    removeDocumentChunks,
+    hasDocumentChunks,
+} from "@/lib/db/vector-store";
 
 interface UploadResponse {
     success: boolean;
@@ -24,14 +36,57 @@ interface DeleteResponse {
     error?: string;
 }
 
+interface ListResponse {
+    documents: Array<{
+        id: string;
+        name: string;
+        size_bytes: number;
+        page_count: number | null;
+        created_at: string;
+    }>;
+}
+
+/**
+ * GET /api/documents - List user's documents
+ */
+export async function GET(): Promise<NextResponse<ListResponse | { error: string }>> {
+    try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const documents = await getDocuments(user.id);
+        return NextResponse.json({ documents });
+    } catch (error) {
+        console.error("[Documents API] Error:", error);
+        return NextResponse.json(
+            { error: "Failed to fetch documents" },
+            { status: 500 }
+        );
+    }
+}
+
 /**
  * POST /api/documents - Upload and process a document
  */
 export async function POST(request: NextRequest): Promise<NextResponse<UploadResponse>> {
     try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { success: false, error: "Unauthorized" },
+                { status: 401 }
+            );
+        }
+
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
-        const documentId = formData.get("documentId") as string | null;
+        // Always generate document ID server-side (ignore any client-provided ID)
 
         if (!file) {
             return NextResponse.json(
@@ -40,25 +95,21 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
             );
         }
 
-        if (!documentId) {
-            return NextResponse.json(
-                { success: false, error: "No documentId provided" },
-                { status: 400 }
-            );
-        }
-
         const fileName = file.name;
         const fileType = file.type;
+        const fileSize = file.size;
 
         console.log(`[Documents API] Processing file: ${fileName} (${fileType})`);
 
         // Extract text based on file type
         let text: string;
+        let pageCount: number | undefined;
 
         if (fileType === "application/pdf") {
             const buffer = Buffer.from(await file.arrayBuffer());
             const result = await parsePDF(buffer, fileName);
             text = result.text;
+            pageCount = result.pageCount;
             console.log(`[Documents API] Extracted ${text.length} chars from PDF (${result.pageCount} pages)`);
         } else if (
             fileType === "text/plain" ||
@@ -84,6 +135,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
             );
         }
 
+        // Always create document record in database (generates UUID)
+        const doc = await createDocument(user.id, {
+            name: fileName,
+            size_bytes: fileSize,
+            page_count: pageCount,
+        });
+        const documentId = doc.id;
+
         // Chunk the text
         const chunks = chunkText(text, documentId, fileName);
         console.log(`[Documents API] Created ${chunks.length} chunks`);
@@ -100,20 +159,33 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
         const embeddings = await generateEmbeddings(chunkTexts);
         console.log(`[Documents API] Generated ${embeddings.length} embeddings`);
 
-        // Attach embeddings to chunks
-        const chunksWithEmbeddings: DocumentChunk[] = chunks.map((chunk, i) => ({
-            ...chunk,
+        // Prepare chunks with embeddings for database storage
+        const chunksWithEmbeddings = chunks.map((chunk, i) => ({
+            content: chunk.content,
+            chunk_index: chunk.metadata.chunkIndex,
+            start_char: chunk.metadata.startChar,
+            end_char: chunk.metadata.endChar,
             embedding: embeddings[i],
         }));
 
-        // Remove existing document if re-uploading
+        // Remove existing chunks if re-uploading
+        if (await hasDocumentChunks(documentId)) {
+            await removeDocumentChunks(documentId);
+        }
+
+        // Store chunks in pgvector
+        await addChunks(documentId, chunksWithEmbeddings);
+        console.log(`[Documents API] Stored ${chunksWithEmbeddings.length} chunks in database`);
+
+        // Also add to in-memory store for current session compatibility
+        const inMemoryChunks: DocumentChunk[] = chunks.map((chunk, i) => ({
+            ...chunk,
+            embedding: embeddings[i],
+        }));
         if (vectorStore.hasDocument(documentId)) {
             vectorStore.removeDocument(documentId);
         }
-
-        // Store in vector store
-        vectorStore.addChunks(chunksWithEmbeddings);
-        console.log(`[Documents API] Stored ${chunksWithEmbeddings.length} chunks in vector store`);
+        vectorStore.addChunks(inMemoryChunks);
 
         const processedDocument: ProcessedDocument = {
             id: documentId,
@@ -137,10 +209,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
 }
 
 /**
- * DELETE /api/documents - Remove a document from the vector store
+ * DELETE /api/documents - Remove a document from database and vector store
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteResponse>> {
     try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { success: false, error: "Unauthorized" },
+                { status: 401 }
+            );
+        }
+
         const { documentId } = await request.json();
 
         if (!documentId) {
@@ -150,14 +232,11 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<DeleteR
             );
         }
 
-        const removed = vectorStore.removeDocument(documentId);
+        // Delete from database (cascades to chunks)
+        await deleteDocumentFromDB(documentId);
 
-        if (!removed) {
-            return NextResponse.json(
-                { success: false, error: "Document not found" },
-                { status: 404 }
-            );
-        }
+        // Also remove from in-memory store
+        vectorStore.removeDocument(documentId);
 
         console.log(`[Documents API] Removed document: ${documentId}`);
 

@@ -17,10 +17,19 @@ export interface Message {
 export interface ChatRequest {
   query: string
   documentIds?: string[]
+  conversationId?: string
 }
 
 export interface ChatResponse {
   response: string
+}
+
+export interface Conversation {
+  id: string
+  userId: string
+  title: string
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface DocumentUploadResponse {
