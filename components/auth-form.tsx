@@ -32,15 +32,13 @@ export function AuthForm({ mode }: AuthFormProps) {
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
-                    options: {
-                        emailRedirectTo: `${window.location.origin}/auth/callback`,
-                    },
                 });
 
                 if (error) throw error;
 
-                // Show success message for signup
-                setError("Check your email for the confirmation link!");
+                // Redirect to home after successful signup
+                router.push("/");
+                router.refresh();
             } else {
                 const { error } = await supabase.auth.signInWithPassword({
                     email,
