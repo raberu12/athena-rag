@@ -72,6 +72,11 @@ create policy "Users can update own profile"
   on profiles for update 
   using (auth.uid() = id);
 
+-- Allow the signup trigger to insert profiles
+create policy "Allow profile creation on signup"
+  on profiles for insert
+  with check (true);
+
 -- RLS Policies for conversations
 create policy "Users can view own conversations" 
   on conversations for select 
