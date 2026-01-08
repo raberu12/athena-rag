@@ -5,6 +5,10 @@ import { DocumentDrawer } from "./document-drawer"
 import { ChatPanel } from "./chat-panel"
 import type { Document } from "@/types/rag"
 
+/**
+ * Standalone ChatbotContainer for simpler use cases without authentication.
+ * For authenticated usage with conversation persistence, use AuthenticatedApp instead.
+ */
 export function ChatbotContainer() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([])
@@ -12,6 +16,7 @@ export function ChatbotContainer() {
   const [hasDrawerBeenClosed, setHasDrawerBeenClosed] = useState(false)
   const [showGreeting, setShowGreeting] = useState(false)
   const [greetingComplete, setGreetingComplete] = useState(false)
+  const [conversationId, setConversationId] = useState<string | null>(null)
 
   const handleDocumentUpload = useCallback((newDocuments: Document[]) => {
     setDocuments((prev) => [...prev, ...newDocuments])
@@ -61,6 +66,26 @@ export function ChatbotContainer() {
     setShowGreeting(false)
   }, [])
 
+  // Create a conversation on mount for standalone mode
+  useEffect(() => {
+    const createConversation = async () => {
+      try {
+        const response = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setConversationId(data.conversation?.id || null)
+        }
+      } catch (error) {
+        console.error("Failed to create conversation:", error)
+      }
+    }
+    createConversation()
+  }, [])
+
   // Auto-close drawer and trigger greeting when first document is uploaded
   const [hasAutoClosedOnUpload, setHasAutoClosedOnUpload] = useState(false)
 
@@ -70,6 +95,12 @@ export function ChatbotContainer() {
       handleDrawerClose()
     }
   }, [documents.length, isDrawerOpen, hasAutoClosedOnUpload, handleDrawerClose])
+
+  // No-op for sidebar toggle in standalone mode
+  const handleToggleSidebar = useCallback(() => { }, [])
+
+  // No-op for conversation update in standalone mode
+  const handleConversationUpdate = useCallback(() => { }, [])
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -92,8 +123,11 @@ export function ChatbotContainer() {
         onToggleDrawer={handleToggleDrawer}
         showGreeting={showGreeting}
         onGreetingComplete={handleGreetingComplete}
+        conversationId={conversationId}
+        onToggleSidebar={handleToggleSidebar}
+        userEmail="guest@example.com"
+        onConversationUpdate={handleConversationUpdate}
       />
     </div>
   )
 }
-
