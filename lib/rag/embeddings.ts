@@ -78,7 +78,7 @@ async function generateEmbeddingsBatch(texts: string[], apiKey: string): Promise
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiKey}`,
-                "HTTP-Referer": "http://localhost:3000",
+                "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
                 "X-Title": "RAG Chatbot",
             },
             body: JSON.stringify({
