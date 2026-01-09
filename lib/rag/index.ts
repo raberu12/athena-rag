@@ -24,10 +24,17 @@ export { chunkText } from "./chunker";
 export { generateEmbedding, generateEmbeddings, generateQueryEmbedding } from "./embeddings";
 
 // Retrieval (Note: use lib/db/vector-store for database-backed retrieval)
-export { formatContextForPrompt } from "./retriever";
+export { formatContextForPrompt, formatContextWithCitations } from "./retriever";
+export type { CitationContext } from "./retriever";
 
 // Prompt Construction
-export { buildRAGPrompt } from "./prompts";
+export { buildRAGPrompt, buildRAGPromptWithCitations } from "./prompts";
+export type { PromptWithCitations } from "./prompts";
+
+// Response Parsing
+export { parseStructuredResponse, parseResponseWithFallback } from "./response-parser";
+export type { ParsedResponse } from "./response-parser";
 
 // OpenRouter Client
 export { chat, chatWithSystem } from "./openrouter";
+

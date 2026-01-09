@@ -7,11 +7,27 @@ export interface Document {
   processed?: boolean
 }
 
+// Citation types for interactive Wikipedia-style citations
+export interface CitationMetadata {
+  source: string
+  page?: string
+  url?: string
+  chunkIndex?: number
+}
+
+export interface CitationData {
+  id: string          // c1, c2, c3...
+  snippet: string     // 150-250 chars preview for tooltip
+  content: string     // full chunk content for modal
+  metadata: CitationMetadata
+}
+
 export interface Message {
   id: string
   role: "user" | "assistant"
   content: string
   timestamp: Date
+  citations?: CitationData[]  // optional citations for assistant messages
 }
 
 export interface ChatRequest {
@@ -22,6 +38,13 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   response: string
+  citations?: CitationData[]  // optional citations in response
+}
+
+// Structured response format expected from LLM
+export interface StructuredLLMResponse {
+  answer: string      // contains {{cite:cX}} markers
+  citations: CitationData[]
 }
 
 export interface Conversation {
