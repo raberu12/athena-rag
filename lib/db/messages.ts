@@ -3,7 +3,8 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import type { Tables, InsertTables, UpdateTables } from "@/types/supabase";
+import type { Tables, InsertTables, UpdateTables, Json } from "@/types/supabase";
+import type { CitationData } from "@/types/rag";
 
 export type Message = Tables<"messages">;
 
@@ -29,11 +30,16 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
 /**
  * Add a message to a conversation
+ * @param conversationId - The conversation to add the message to
+ * @param role - "user" or "assistant"
+ * @param content - The message content
+ * @param citations - Optional citation data for assistant messages
  */
 export async function addMessage(
     conversationId: string,
     role: "user" | "assistant",
-    content: string
+    content: string,
+    citations?: CitationData[]
 ): Promise<Message> {
     const supabase = await createClient();
 
@@ -41,6 +47,7 @@ export async function addMessage(
         conversation_id: conversationId,
         role,
         content,
+        citations: citations ? (citations as unknown as Json) : null,
     };
 
     const { data, error } = await supabase

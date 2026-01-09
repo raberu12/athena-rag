@@ -90,6 +90,7 @@ export interface Database {
                     conversation_id: string;
                     role: "user" | "assistant";
                     content: string;
+                    citations: Json | null;
                     created_at: string;
                 };
                 Insert: {
@@ -97,6 +98,7 @@ export interface Database {
                     conversation_id: string;
                     role: "user" | "assistant";
                     content: string;
+                    citations?: Json | null;
                     created_at?: string;
                 };
                 Update: {
@@ -104,6 +106,7 @@ export interface Database {
                     conversation_id?: string;
                     role?: "user" | "assistant";
                     content?: string;
+                    citations?: Json | null;
                     created_at?: string;
                 };
                 Relationships: [
