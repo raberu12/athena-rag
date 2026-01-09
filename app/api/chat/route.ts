@@ -1,11 +1,12 @@
 /**
  * Chat API - RAG-powered responses using OpenRouter
  * Uses Supabase auth and pgvector for document retrieval
+ * Returns structured responses with inline citations
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { buildRAGPrompt, chatWithSystem } from "@/lib/rag";
+import { buildRAGPromptWithCitations, chatWithSystem, parseResponseWithFallback } from "@/lib/rag";
 import { addMessage } from "@/lib/db/messages";
 import { getConversation, updateConversation } from "@/lib/db/conversations";
 import { searchSimilar, getChunkCount } from "@/lib/db/vector-store";
@@ -110,19 +111,32 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       retrievalResult = { chunks: [], isEmpty: true };
     }
 
-    // Build RAG prompt
-    const { system, user: userPrompt } = buildRAGPrompt(query, retrievalResult, hasDocuments);
+    // Build RAG prompt with citation support
+    const { system, user: userPrompt, citations, validCitationIds } =
+      buildRAGPromptWithCitations(query, retrievalResult, hasDocuments);
 
     // Generate response using OpenRouter
-    const response = await chatWithSystem(system, userPrompt);
-    console.log(`[Chat API] Generated response (${response.length} chars)`);
+    const rawResponse = await chatWithSystem(system, userPrompt);
+    console.log(`[Chat API] Generated raw response (${rawResponse.length} chars)`);
 
-    // Persist assistant response if conversationId provided
+    // Parse structured response and extract citations
+    const { answer, citations: usedCitations } = parseResponseWithFallback(
+      rawResponse,
+      citations,
+      validCitationIds
+    );
+
+    console.log(`[Chat API] Parsed response with ${usedCitations.length} citations`);
+
+    // Persist assistant response with citations if conversationId provided
     if (conversationId) {
-      await addMessage(conversationId, "assistant", response);
+      await addMessage(conversationId, "assistant", answer, usedCitations);
     }
 
-    return NextResponse.json({ response });
+    return NextResponse.json({
+      response: answer,
+      citations: usedCitations,
+    });
   } catch (error) {
     console.error("[Chat API] Error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -132,3 +146,4 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     );
   }
 }
+
