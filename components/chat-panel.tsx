@@ -9,7 +9,7 @@ import { Send, Loader, MessageSquarePlus, FileText } from "lucide-react";
 import { ChatMessage } from "./chat-message";
 import { TypingMessage } from "./typing-message";
 import { UserMenu } from "./user-menu";
-import type { Document, Message } from "@/types/rag";
+import type { Document, Message, CitationData } from "@/types/rag";
 
 interface ChatPanelProps {
   documents: Document[];
@@ -63,11 +63,12 @@ export function ChatPanel({
           if (response.ok) {
             const data = await response.json();
             const loadedMessages: Message[] = (data.messages || []).map(
-              (msg: { id: string; role: "user" | "assistant"; content: string; created_at: string }) => ({
+              (msg: { id: string; role: "user" | "assistant"; content: string; created_at: string; citations?: CitationData[] | null }) => ({
                 id: msg.id,
                 role: msg.role,
                 content: msg.content,
                 timestamp: new Date(msg.created_at),
+                citations: msg.citations || undefined,
               })
             );
             setMessages(loadedMessages);
@@ -140,6 +141,7 @@ export function ChatPanel({
         role: "assistant",
         content: data.response || data.error || "No response received",
         timestamp: new Date(),
+        citations: data.citations, // Include citations from API response
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
