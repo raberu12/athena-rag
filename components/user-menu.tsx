@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +13,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, BookOpen } from "lucide-react";
 
 interface UserMenuProps {
     email: string;
@@ -47,6 +48,13 @@ export function UserMenu({ email }: UserMenuProps) {
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                    <Link href="/docs" className="flex items-center cursor-pointer">
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        <span>Documentation</span>
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} disabled={loading}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
@@ -55,3 +63,4 @@ export function UserMenu({ email }: UserMenuProps) {
         </DropdownMenu>
     );
 }
+
