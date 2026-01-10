@@ -24,9 +24,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 # OpenRouter
 OPENROUTER_API_KEY=your-openrouter-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# For docs ingestion (optional)
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 ### Database Setup
@@ -60,23 +57,11 @@ npm run build
 # Run linting
 npm run lint
 
-# Ingest documentation into vector store (optional)
-SUPABASE_SERVICE_ROLE_KEY=xxx npm run ingest:docs
-
 # Check for broken links in docs
 npm run check:docs-links
 ```
 
-## Re-indexing Documentation
-
-To re-index the documentation content into the vector store after updates:
-
-```bash
-SUPABASE_SERVICE_ROLE_KEY=your-key npm run ingest:docs
-```
-
-This ingests all markdown files from `content/docs/` for RAG retrieval.
-
 ## License
 
 Private
+
