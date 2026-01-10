@@ -10,19 +10,18 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
+        url: "/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
       },
       {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
+        url: "/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
       },
     ],
-    apple: "/apple-icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 }
 
@@ -37,9 +36,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Aldrich&display=swap" rel="stylesheet" />
-
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap"
           rel="stylesheet"
         />
       </head>
