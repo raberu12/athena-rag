@@ -26,9 +26,6 @@ npm run build
 # Run linting
 npm run lint
 
-# Ingest documentation into vector store
-npm run ingest:docs
-
 # Check for broken links in docs
 npm run check:docs-links
 ```
