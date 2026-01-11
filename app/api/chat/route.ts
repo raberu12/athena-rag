@@ -118,6 +118,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     // Generate response using OpenRouter
     const rawResponse = await chatWithSystem(system, userPrompt);
     console.log(`[Chat API] Generated raw response (${rawResponse.length} chars)`);
+    console.log(`[Chat API] Raw response preview: ${rawResponse.substring(0, 200)}...`);
 
     // Parse structured response and extract citations
     const { answer, citations: usedCitations } = parseResponseWithFallback(

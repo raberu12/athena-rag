@@ -124,7 +124,29 @@ export function parseStructuredResponse(
         };
     } catch (error) {
         // Fallback: treat the entire response as plain text answer
-        console.warn('[Response Parser] Failed to parse JSON response, using fallback:', error);
+        // BUT still try to extract citations if the response contains {{cite:cX}} markers
+        console.warn('[Response Parser] Failed to parse JSON response, attempting plain text fallback');
+
+        // Check if the raw response contains citation markers
+        const usedCitationIds = extractUsedCitationIds(rawResponse);
+
+        if (usedCitationIds.length > 0) {
+            // Sanitize and extract citations from plain text response
+            const sanitizedAnswer = sanitizeCitationMarkers(rawResponse, validCitationIds);
+            const finalCitationIds = extractUsedCitationIds(sanitizedAnswer);
+            const usedCitations = contextCitations.filter(c =>
+                finalCitationIds.includes(c.id)
+            );
+
+            console.log(`[Response Parser] Extracted ${usedCitations.length} citations from plain text response`);
+
+            return {
+                answer: sanitizedAnswer,
+                citations: usedCitations,
+                isValid: false, // Still mark as invalid since JSON parsing failed
+                error: 'JSON parsing failed but citations extracted from plain text',
+            };
+        }
 
         return {
             answer: rawResponse,
