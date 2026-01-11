@@ -104,7 +104,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     <>
       <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
         <Card
-          className={`max-w-xs px-4 py-3 border ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
+          className={`max-w-xs px-4 py-3 border ${isUser ? "bg-primary text-primary-foreground" : "bg-accent/20 text-foreground"}`}
         >
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
             {renderContent()}

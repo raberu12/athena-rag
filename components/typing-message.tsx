@@ -28,7 +28,7 @@ export function TypingMessage({ content, onComplete, typingSpeed = 30 }: TypingM
 
     return (
         <div className="flex justify-start">
-            <Card className="max-w-xs px-4 py-3 border bg-muted text-foreground">
+            <Card className="max-w-xs px-4 py-3 border bg-accent/20 text-foreground">
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">
                     {displayedContent}
                     {!isComplete && (

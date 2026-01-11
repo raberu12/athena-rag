@@ -131,12 +131,12 @@ export function ConversationSidebar({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 shrink-0 opacity-60 hover:opacity-100"
+                                    className="h-8 w-8 shrink-0 opacity-60 hover:opacity-100 hover:bg-destructive/20 hover:text-destructive"
                                     onClick={(e) => handleDelete(e, conversation.id)}
                                     disabled={deletingId === conversation.id}
                                     title="Delete conversation"
                                 >
-                                    <Trash2 className="h-4 w-4 text-sidebar-foreground hover:text-destructive" />
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         ))

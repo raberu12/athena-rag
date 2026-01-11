@@ -226,8 +226,14 @@ export function ChatPanel({
                 messages.map((message) => <ChatMessage key={message.id} message={message} />)}
 
               {isLoading && (
-                <div className="flex justify-center">
-                  <Loader className="h-5 w-5 animate-spin text-muted-foreground" />
+                <div className="flex justify-start">
+                  <Card className="px-4 py-3 border bg-accent/20 text-foreground">
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </Card>
                 </div>
               )}
               <div ref={messagesEndRef} />
