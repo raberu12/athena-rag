@@ -20,6 +20,7 @@ export function AuthenticatedApp({ userEmail }: AuthenticatedAppProps) {
     const [showGreeting, setShowGreeting] = useState(false);
     const [greetingComplete, setGreetingComplete] = useState(false);
 
+
     // Fetch conversations on mount
     useEffect(() => {
         const fetchConversations = async () => {
@@ -160,6 +161,8 @@ export function AuthenticatedApp({ userEmail }: AuthenticatedAppProps) {
             console.error("Failed to refresh conversations:", error);
         }
     }, []);
+
+
 
     return (
         // Flex layout: sidebar + main content side by side
