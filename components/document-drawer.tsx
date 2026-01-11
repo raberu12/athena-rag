@@ -133,27 +133,16 @@ export function DocumentDrawer({
                 {documents.map((doc) => (
                   <Card
                     key={doc.id}
-                    className={`cursor-pointer transition-all border ${selectedDocIds.includes(doc.id) ? "border-primary bg-primary/5" : "bg-card hover:bg-muted/50"
-                      }`}
-                    onClick={() => onToggle(doc.id)}
+                    className="border bg-card"
                   >
                     <div className="flex items-start gap-3 p-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedDocIds.includes(doc.id)}
-                        onChange={() => onToggle(doc.id)}
-                        className="mt-1"
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      <FileText className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">{doc.name}</p>
                         <p className="text-xs text-muted-foreground">{(doc.size / 1024).toFixed(1)} KB</p>
                       </div>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onRemove(doc.id)
-                        }}
+                        onClick={() => onRemove(doc.id)}
                         className="rounded p-1 hover:bg-destructive/10"
                       >
                         <X className="h-4 w-4 text-destructive" />
