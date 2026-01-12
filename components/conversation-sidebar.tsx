@@ -42,7 +42,8 @@ export function ConversationSidebar({
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
-        const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+        // Use Math.max to handle cases where server time is slightly ahead of client time
+        const diffInDays = Math.max(0, Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)));
 
         if (diffInDays === 0) return "Today";
         if (diffInDays === 1) return "Yesterday";
